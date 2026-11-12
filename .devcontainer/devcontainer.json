@@ -1,36 +1,39 @@
+
 {
-    "name": "Life Mate Dev Environment",
-    "image": "mcr.microsoft.com/devcontainers/universal:2",
-    "features": {
-        "ghcr.io/devcontainers/features/java:1": {
-            "version": "17",
-            "installMaven": "true"
-        },
-        "ghcr.io/devcontainers/features/python:1": {
-            "version": "3.11"
-        },
-        "ghcr.io/devcontainers/features/node:1": {
-            "version": "20"
-        },
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  "name": "Life Mate Dev Environment",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17",
+      "installMaven": "true"
     },
-    "forwardPorts": [
-        5432,
-        6379,
-        15672,
-        8080,
-        8081,
-        8000,
-        5173
-    ],
-    "customizations": {
-        "vscode": {
-            "extensions": [
-                "vscjava.vscode-java-pack",
-                "vmware.vscode-boot-dev-pack",
-                "ms-python.python",
-                "dsznajder.es7-react-js-snippets"
-            ]
-        }
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
     }
+  },
+  "forwardPorts": [
+    5432,
+    6379,
+    15672,
+    8080,
+    8081,
+    8000,
+    5173
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-boot-dev-pack",
+        "ms-python.python",
+        "dsznajder.es7-react-js-snippets"
+      ]
+    }
+  }
 }

@@ -16,11 +16,10 @@ build/
 
 # Environment & IDE
 .env
-.env.example
+.env.*
+!.env.example
+!docker/.env.example
 .idea/
 .vscode/
 *.iml
 .DS_Store
-
-
-docker/.env.example
