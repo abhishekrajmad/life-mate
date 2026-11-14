@@ -1,7 +1,6 @@
 package com.lifemate.expense.controller;
 
-import com.lifemate.expense.dto.ExpenseRequestDTO;
-import com.lifemate.expense.dto.ExpenseResponseDTO;
+import com.lifemate.expense.dto.*;
 import com.lifemate.expense.service.ExpenseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +20,20 @@ public class ExpenseController {
     @PostMapping
     public ResponseEntity<ExpenseResponseDTO> createExpense(@Valid @RequestBody ExpenseRequestDTO request) {
         ExpenseResponseDTO created = expenseService.createExpense(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping("/parse")
+    public ResponseEntity<ExpenseResponseDTO> createFromNaturalLanguage(
+            @Valid @RequestBody NaturalLanguageExpenseRequestDTO request) {
+        ExpenseResponseDTO created = expenseService.createFromNaturalLanguage(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping("/webhook/sms")
+    public ResponseEntity<ExpenseResponseDTO> receiveSmsWebhook(
+            @Valid @RequestBody SmsWebhookRequestDTO request) {
+        ExpenseResponseDTO created = expenseService.processSmsWebhook(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

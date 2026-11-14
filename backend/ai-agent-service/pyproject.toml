@@ -1,0 +1,12 @@
+[project]
+name = "ai-agent-service"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.163.0",
+    "google-genai>=3.3.0",
+    "pydantic>=2.14.3",
+    "pydantic-settings>=2.16.3",
+    "python-dotenv>=1.2.4",
+    "uvicorn[standard]>=0.54.0",
+]
