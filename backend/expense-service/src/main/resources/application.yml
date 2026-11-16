@@ -25,6 +25,16 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+
+rabbitmq:
+  exchange: lifemate.events.exchange
+  routing-key:
+    budget-exceeded: budget.exceeded
 
 ai-agent:
   base-url: ${AI_AGENT_URL}

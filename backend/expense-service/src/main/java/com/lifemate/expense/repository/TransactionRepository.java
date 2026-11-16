@@ -19,7 +19,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.category.id = :categoryId " +
            "AND t.transactionType = 'EXPENSE' " +
            "AND t.createdAt >= :startOfMonth")
-    BigDecimal sumMonthlyExpenseByCategory(
+    BigDecimal sumMonthlyExpensesByCategory(
             @Param("categoryId") Long categoryId,
             @Param("startOfMonth") LocalDateTime startOfMonth
     );
