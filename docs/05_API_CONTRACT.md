@@ -108,6 +108,33 @@ Fetches account balance, spending ledgers, and budget progress.
 }
 ```
 
+### `GET /api/v1/categories/{categoryId}/budget-status?month=YYYY-MM&throughTransactionId={id}`
+Returns the category's monthly limit and expense total through the specified transaction. The Notification Service uses this after consuming an expense event so later transactions do not change that event's budget check.
+
+* **Success Response (`200 OK`):**
+```json
+{
+  "categoryId": 1,
+  "categoryName": "Food & Dining",
+  "monthlyLimit": 10000.00,
+  "spent": 450.00
+}
+```
+
+### `POST /api/v1/budget-alerts`
+Records an over-budget alert once per expense event. The Notification Service calls this after checking the monthly total. Repeating the same `eventId` returns `created: false` and does not add another receipt.
+
+* **Request Body:**
+```json
+{
+  "eventId": "e98b7c3e-3f9b-4814-850d-6f00422db787",
+  "categoryId": 1,
+  "monthlyLimit": 10000.00,
+  "spent": 10450.00
+}
+```
+* **Success Response (`200 OK`):** `{"created": true}` on first insert, `{"created": false}` on replay.
+
 ---
 
 ## 3. RabbitMQ Message Event Contract
@@ -119,11 +146,15 @@ Fetches account balance, spending ledgers, and budget progress.
 ```json
 {
   "eventId": "evt_987654321",
+  "transactionId": 101,
   "userId": "usr_abhishek",
   "accountId": 1,
   "categoryId": 1,
   "categoryName": "Food & Dining",
   "amount": 450.00,
+  "transactionType": "EXPENSE",
   "timestamp": "2026-11-11T14:02:00Z"
 }
 ```
+
+The Expense Service writes the event to `expense_event_outbox` in the same PostgreSQL transaction as the expense. A scheduled publisher sends pending rows to RabbitMQ and marks them published only after broker confirmation. Publication is at least once; the alert receipt keyed by `eventId` prevents a replay from creating a second durable alert. The Notification Service retries failed budget lookups with a delay and requeues the message until the dependency recovers.

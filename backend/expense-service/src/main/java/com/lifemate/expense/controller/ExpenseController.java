@@ -42,4 +42,14 @@ public class ExpenseController {
         List<ExpenseResponseDTO> expenses = expenseService.getAllExpenses();
         return ResponseEntity.ok(expenses);
     }
+
+    @PostMapping(value = "/webhook/sms", consumes = org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public ResponseEntity<ExpenseResponseDTO> ingestSmsForm(
+            @RequestParam("sender") String sender,
+            @RequestParam("body") String body) {
+        SmsWebhookRequestDTO request = new SmsWebhookRequestDTO();
+        request.setSender(sender);
+        request.setBody(body);
+        return ResponseEntity.status(HttpStatus.CREATED).body(expenseService.processSmsWebhook(request));
+    }
 }

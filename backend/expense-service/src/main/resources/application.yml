@@ -1,5 +1,6 @@
 server:
   port: ${SERVER_PORT:8081}
+  address: 0.0.0.0
 
 spring:
   application:
@@ -30,11 +31,17 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASS:guest}
+    publisher-confirm-type: correlated
 
 rabbitmq:
-  exchange: lifemate.events.exchange
+  exchange: expense.exchange
+  queue: budget.alerts.queue
   routing-key:
-    budget-exceeded: budget.exceeded
+    expense-created: expense.created
+
+outbox:
+  poll-delay-ms: ${OUTBOX_POLL_DELAY_MS:1000}
+  confirm-timeout-ms: ${OUTBOX_CONFIRM_TIMEOUT_MS:5000}
 
 ai-agent:
   base-url: ${AI_AGENT_URL}

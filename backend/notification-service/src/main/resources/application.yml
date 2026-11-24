@@ -1,5 +1,5 @@
 server:
-  port: 8082
+  port: ${SERVER_PORT:8082}
 
 spring:
   application:
@@ -11,6 +11,14 @@ spring:
     password: ${RABBITMQ_PASS:guest}
 
 rabbitmq:
-  exchange: lifemate.events.exchange
-  queue: lifemate.budget.alerts.queue
-  routing-key: budget.exceeded
+  exchange: expense.exchange
+  queue: budget.alerts.queue
+  routing-key: expense.created
+  consumer:
+    retry-attempts: ${BUDGET_ALERT_RETRY_ATTEMPTS:3}
+    retry-delay-ms: ${BUDGET_ALERT_RETRY_DELAY_MS:2000}
+
+expense-service:
+  base-url: ${EXPENSE_SERVICE_URL:http://localhost:8081}
+  connect-timeout-ms: ${EXPENSE_SERVICE_CONNECT_TIMEOUT_MS:2000}
+  read-timeout-ms: ${EXPENSE_SERVICE_READ_TIMEOUT_MS:5000}

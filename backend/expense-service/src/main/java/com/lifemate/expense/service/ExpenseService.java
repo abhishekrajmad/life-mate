@@ -6,14 +6,13 @@ import com.lifemate.expense.entity.Account;
 import com.lifemate.expense.entity.Category;
 import com.lifemate.expense.entity.Transaction;
 import com.lifemate.expense.exception.ResourceNotFoundException;
-import com.lifemate.expense.messaging.BudgetAlertPublisher;
+import com.lifemate.expense.messaging.ExpenseOutboxWriter;
 import com.lifemate.expense.repository.AccountRepository;
 import com.lifemate.expense.repository.CategoryRepository;
 import com.lifemate.expense.repository.TransactionRepository;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,7 @@ public class ExpenseService {
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final AiAgentClient aiAgentClient;
-    private final BudgetAlertPublisher budgetAlertPublisher;
+    private final ExpenseOutboxWriter outboxWriter;
 
     @Transactional
     public ExpenseResponseDTO createExpense(ExpenseRequestDTO request) {
@@ -65,9 +64,17 @@ public class ExpenseService {
 
         Transaction savedTransaction = transactionRepository.save(transaction);
 
-        if ("EXPENSE".equalsIgnoreCase(txType) && category.getMonthlyBudgetLimit() != null) {
-            checkAndPublishBudgetAlert(category, savedTransaction);
-        }
+        outboxWriter.save(ExpenseCreatedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .transactionId(savedTransaction.getId())
+                .userId(account.getUserId())
+                .accountId(account.getId())
+                .categoryId(category.getId())
+                .categoryName(category.getName())
+                .amount(savedTransaction.getAmount())
+                .transactionType(savedTransaction.getTransactionType())
+                .timestamp(savedTransaction.getCreatedAt())
+                .build());
         log.info("Successfully saved transaction with ID: {}", savedTransaction.getId());
 
         return mapToResponseDTO(savedTransaction);
@@ -131,25 +138,4 @@ public class ExpenseService {
                 .build();
     }
 
-    private void checkAndPublishBudgetAlert(Category category, Transaction transaction) {
-    LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
-    BigDecimal totalMonthlySpent = transactionRepository.sumMonthlyExpensesByCategory(
-            category.getId(), startOfMonth
-    );
-
-    if (totalMonthlySpent.compareTo(category.getMonthlyBudgetLimit()) > 0) {
-        BudgetExceededEvent event = BudgetExceededEvent.builder()
-                .categoryId(category.getId())
-                .categoryName(category.getName())
-                .monthlyLimit(category.getMonthlyBudgetLimit())
-                .currentSpent(totalMonthlySpent)
-                .exceededBy(totalMonthlySpent.subtract(category.getMonthlyBudgetLimit()))
-                .triggeringMerchant(transaction.getMerchant())
-                .triggeringAmount(transaction.getAmount())
-                .occurredAt(LocalDateTime.now())
-                .build();
-
-        budgetAlertPublisher.publishBudgetExceeded(event);
-    }
-}
 }
