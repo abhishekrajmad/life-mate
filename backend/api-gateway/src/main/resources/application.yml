@@ -1,0 +1,37 @@
+server:
+  port: ${SERVER_PORT:8080}
+  address: ${SERVER_ADDRESS:127.0.0.1}
+
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    gateway:
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: ${GATEWAY_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+            allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+            allowedHeaders: ['*']
+            maxAge: 3600
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: ${GATEWAY_RATE_REPLENISH:10}
+            redis-rate-limiter.burstCapacity: ${GATEWAY_RATE_BURST:20}
+            redis-rate-limiter.requestedTokens: 1
+            key-resolver: '#{@clientKeyResolver}'
+      routes:
+        - id: expense-service
+          uri: ${EXPENSE_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/expenses,/api/v1/expenses/**,/api/v1/dashboard/**,/api/v1/categories/**
+        - id: ai-agent-service
+          uri: ${AI_AGENT_URL:http://localhost:8000}
+          predicates:
+            - Path=/api/v1/ai/**

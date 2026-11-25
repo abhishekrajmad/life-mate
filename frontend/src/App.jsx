@@ -10,7 +10,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-const API_BASE = '/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export default function App() {
   const [summary, setSummary] = useState(null);
@@ -25,6 +25,7 @@ export default function App() {
       if (!res.ok) throw new Error('Failed to load dashboard summary');
       const data = await res.json();
       setSummary(data);
+      setToast((current) => current?.type === 'error' ? null : current);
     } catch (err) {
       setToast({ type: 'error', message: err.message });
     } finally {
