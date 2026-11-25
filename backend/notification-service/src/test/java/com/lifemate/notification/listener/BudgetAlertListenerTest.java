@@ -31,30 +31,34 @@ class BudgetAlertListenerTest {
     @Test
     void checksBudgetForExpenseInEventMonth(CapturedOutput output) {
         ExpenseCreatedEvent event = ExpenseCreatedEvent.builder().eventId("event-1")
+                .userId("user-1")
                 .transactionId(3L).categoryId(2L).transactionType("EXPENSE")
                 .timestamp(LocalDateTime.of(2026, 10, 12, 10, 0)).build();
         CategoryBudgetStatusDTO status = new CategoryBudgetStatusDTO();
         status.setCategoryName("Food & Dining");
         status.setMonthlyLimit(new BigDecimal("100.00"));
         status.setSpent(new BigDecimal("110.00"));
-        when(expenseServiceClient.getBudgetStatus(2L, YearMonth.of(2026, 10), 3L)).thenReturn(status);
+        when(expenseServiceClient.getBudgetStatus("user-1", 2L, YearMonth.of(2026, 10), 3L))
+                .thenReturn(status);
         when(expenseServiceClient.recordBudgetAlert("event-1", 2L,
                 new BigDecimal("100.00"), new BigDecimal("110.00"))).thenReturn(true);
 
         assertDoesNotThrow(() -> listener.handleExpenseCreated(event));
-        verify(expenseServiceClient).getBudgetStatus(2L, YearMonth.of(2026, 10), 3L);
+        verify(expenseServiceClient).getBudgetStatus("user-1", 2L, YearMonth.of(2026, 10), 3L);
         assertTrue(output.getOut().contains("Budget exceeded for category Food & Dining"));
     }
 
     @Test
     void staysQuietWhenBudgetIsNotExceeded(CapturedOutput output) {
         ExpenseCreatedEvent event = ExpenseCreatedEvent.builder().eventId("event-2")
+                .userId("user-1")
                 .transactionId(4L).categoryId(2L).transactionType("EXPENSE")
                 .timestamp(LocalDateTime.of(2026, 10, 13, 10, 0)).build();
         CategoryBudgetStatusDTO status = new CategoryBudgetStatusDTO();
         status.setMonthlyLimit(new BigDecimal("100.00"));
         status.setSpent(new BigDecimal("90.00"));
-        when(expenseServiceClient.getBudgetStatus(2L, YearMonth.of(2026, 10), 4L)).thenReturn(status);
+        when(expenseServiceClient.getBudgetStatus("user-1", 2L, YearMonth.of(2026, 10), 4L))
+                .thenReturn(status);
 
         listener.handleExpenseCreated(event);
         assertFalse(output.getOut().contains("Budget exceeded"));
@@ -64,18 +68,20 @@ class BudgetAlertListenerTest {
     void incomeDoesNotCheckExpenseBudget() {
         ExpenseCreatedEvent event = ExpenseCreatedEvent.builder().transactionType("INCOME").build();
         listener.handleExpenseCreated(event);
-        verify(expenseServiceClient, never()).getBudgetStatus(any(), any(), any());
+        verify(expenseServiceClient, never()).getBudgetStatus(any(), any(), any(), any());
     }
 
     @Test
     void replayedEventDoesNotEmitAnotherAlert(CapturedOutput output) {
         ExpenseCreatedEvent event = ExpenseCreatedEvent.builder().eventId("event-1")
+                .userId("user-1")
                 .transactionId(3L).categoryId(2L).transactionType("EXPENSE")
                 .timestamp(LocalDateTime.of(2026, 10, 12, 10, 0)).build();
         CategoryBudgetStatusDTO status = new CategoryBudgetStatusDTO();
         status.setMonthlyLimit(new BigDecimal("100.00"));
         status.setSpent(new BigDecimal("110.00"));
-        when(expenseServiceClient.getBudgetStatus(2L, YearMonth.of(2026, 10), 3L)).thenReturn(status);
+        when(expenseServiceClient.getBudgetStatus("user-1", 2L, YearMonth.of(2026, 10), 3L))
+                .thenReturn(status);
         when(expenseServiceClient.recordBudgetAlert("event-1", 2L,
                 new BigDecimal("100.00"), new BigDecimal("110.00"))).thenReturn(false);
 

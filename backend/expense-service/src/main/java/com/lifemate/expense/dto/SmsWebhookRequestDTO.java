@@ -1,6 +1,7 @@
 package com.lifemate.expense.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
 import lombok.*;
 
 @Getter
@@ -17,4 +18,7 @@ public class SmsWebhookRequestDTO {
     private String body;
 
     private Long accountId;
+
+    @Valid
+    private ManualExpenseFallbackDTO manualFallback;
 }

@@ -24,11 +24,13 @@ public class ExpenseServiceClient {
         this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).build();
     }
 
-    public CategoryBudgetStatusDTO getBudgetStatus(Long categoryId, YearMonth month, Long throughTransactionId) {
+    public CategoryBudgetStatusDTO getBudgetStatus(
+            String userId, Long categoryId, YearMonth month, Long throughTransactionId) {
         CategoryBudgetStatusDTO status = restClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/categories/{categoryId}/budget-status")
                         .queryParam("month", month.toString())
                         .queryParam("throughTransactionId", throughTransactionId).build(categoryId))
+                .header("X-Authenticated-User", userId)
                 .retrieve().body(CategoryBudgetStatusDTO.class);
         if (status == null) {
             throw new IllegalStateException("Expense service returned no budget status");

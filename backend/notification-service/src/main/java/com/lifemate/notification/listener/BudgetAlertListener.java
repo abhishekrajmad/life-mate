@@ -23,7 +23,8 @@ public class BudgetAlertListener {
             return;
         }
         CategoryBudgetStatusDTO status = expenseServiceClient.getBudgetStatus(
-                event.getCategoryId(), YearMonth.from(event.getTimestamp()), event.getTransactionId());
+                event.getUserId(), event.getCategoryId(), YearMonth.from(event.getTimestamp()),
+                event.getTransactionId());
         BigDecimal limit = status.getMonthlyLimit();
         BigDecimal spent = status.getSpent();
         if (limit != null && spent != null && limit.signum() > 0 && spent.compareTo(limit) > 0

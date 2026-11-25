@@ -11,13 +11,31 @@ import {
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const DEFAULT_CATEGORIES = [
+  'Food & Dining',
+  'Groceries',
+  'Transport',
+  'Utilities & Bills',
+  'Shopping',
+  'Entertainment',
+  'Health & Fitness',
+  'Other',
+];
 
 export default function App() {
   const [summary, setSummary] = useState(null);
   const [rawText, setRawText] = useState('');
+  const [manualFallback, setManualFallback] = useState(null);
+  const [manualAmount, setManualAmount] = useState('');
+  const [manualCategory, setManualCategory] = useState('Food & Dining');
+  const [manualMerchant, setManualMerchant] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  const manualCategoryOptions = [...new Set([
+    ...DEFAULT_CATEGORIES,
+    ...(summary?.categoryBudgets ?? []).map((category) => category.categoryName),
+  ])];
 
   const fetchSummary = async () => {
     try {
@@ -48,16 +66,33 @@ export default function App() {
       const res = await fetch(`${API_BASE}/expenses/parse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText: rawText.trim() }),
+        body: JSON.stringify({
+          rawText: rawText.trim(),
+          ...(manualFallback && {
+            manualFallback: {
+              amount: manualAmount,
+              categoryName: manualCategory,
+              merchant: manualMerchant,
+            },
+          }),
+        }),
       });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
+        if (res.status === 503 && errData.details?.manualFallbackRequired === 'true') {
+          setManualFallback(true);
+          setToast({ type: 'error', message: 'AI parsing is unavailable. Enter the transaction details manually.' });
+          return;
+        }
         throw new Error(errData.message || 'AI parsing failed');
       }
 
       const created = await res.json();
       setRawText('');
+      setManualFallback(null);
+      setManualAmount('');
+      setManualMerchant('');
       setToast({
         type: 'success',
         message: `Logged ₹${created.amount.toLocaleString('en-IN')} at ${created.merchant} (${created.categoryName})`,
@@ -119,31 +154,73 @@ export default function App() {
               AI Quick Expense Entry
             </h2>
           </div>
-          <form onSubmit={handleQuickAdd} className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={rawText}
-              onChange={(e) => setRawText(e.target.value)}
-              placeholder='Try: "Paid 420 for coffee and snacks at Third Wave" or paste a bank SMS...'
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-            />
-            <button
-              type="submit"
-              disabled={submitting || !rawText.trim()}
-              className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              {submitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Parsing...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Log Expense
-                </>
-              )}
-            </button>
+          <form onSubmit={handleQuickAdd} className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={rawText}
+                onChange={(e) => setRawText(e.target.value)}
+                placeholder='Try: "Paid 420 for coffee and snacks at Third Wave" or paste a bank SMS...'
+                className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={submitting || !rawText.trim()}
+                className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                {submitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Parsing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    {manualFallback ? 'Log Manually' : 'Log Expense'}
+                  </>
+                )}
+              </button>
+            </div>
+
+            {manualFallback && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="text-xs text-slate-400">
+                  Amount
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    required
+                    value={manualAmount}
+                    onChange={(event) => setManualAmount(event.target.value)}
+                    className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
+                  />
+                </label>
+                <label className="text-xs text-slate-400">
+                  Category
+                  <select
+                    required
+                    value={manualCategory}
+                    onChange={(event) => setManualCategory(event.target.value)}
+                    className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
+                  >
+                    {manualCategoryOptions.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs text-slate-400">
+                  Merchant
+                  <input
+                    type="text"
+                    maxLength="100"
+                    value={manualMerchant}
+                    onChange={(event) => setManualMerchant(event.target.value)}
+                    className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
+                  />
+                </label>
+              </div>
+            )}
           </form>
 
           {toast && (

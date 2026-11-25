@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 @Builder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class AiParseResponseDTO {
+    private String transactionType;
     private BigDecimal amount;
     private String currency;
     private String category;

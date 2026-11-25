@@ -43,8 +43,10 @@ class ExpenseServiceEventTest {
         Category category = Category.builder().id(2L).name("Food & Dining")
                 .monthlyBudgetLimit(new BigDecimal("1000.00")).build();
         LocalDateTime createdAt = LocalDateTime.of(2026, 11, 24, 12, 0);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
-        when(categoryRepository.findByNameIgnoreCase("Food & Dining")).thenReturn(Optional.of(category));
+        when(accountRepository.findByIdAndUserIdForUpdate(1L, "user-1"))
+                .thenReturn(Optional.of(account));
+        when(categoryRepository.findByUserIdAndNameIgnoreCase("user-1", "Food & Dining"))
+                .thenReturn(Optional.of(category));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
             transaction.setId(3L);
@@ -52,7 +54,7 @@ class ExpenseServiceEventTest {
             return transaction;
         });
 
-        expenseService.createExpense(ExpenseRequestDTO.builder().accountId(1L)
+        expenseService.createExpense("user-1", ExpenseRequestDTO.builder().accountId(1L)
                 .categoryName("Food & Dining").amount(new BigDecimal("10.00"))
                 .transactionType("EXPENSE").build());
 

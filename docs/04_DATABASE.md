@@ -12,9 +12,9 @@
   |     ACCOUNTS     |         |    CATEGORIES      |         |    TRANSACTIONS     |
   +------------------+         +--------------------+         +---------------------+
   | id (PK)          |<---+    | id (PK)            |<---+    | id (PK)             |
-  | user_id          |    |    | name               |    |    | account_id (FK)     |
-  | account_name     |    +----| monthly_budget_lim |    +----| category_id (FK)    |
-  | balance          |         +--------------------+         | amount              |
+  | user_id          |    |    | user_id            |    |    | account_id (FK)     |
+  | account_name     |    |    | name               |    |    | category_id (FK)    |
+  | balance          |    +----| monthly_budget_lim |    +----| amount              |
   | currency         |                                        | transaction_type    |
   | created_at       |                                        | merchant            |
   +------------------+                                        | raw_input           |
@@ -69,6 +69,18 @@ INSERT INTO accounts (user_id, account_name, balance, currency) VALUES
 ('usr_abhishek', 'Primary Salary Account', 50000.00, 'INR');
 ```
 
+### Ownership migration
+
+`V6__financial_data_ownership.sql` adds `categories.user_id`, assigns existing seeded categories to the Phase 1 owner `usr_abhishek`, and replaces global category-name uniqueness with a case-insensitive unique index on `(user_id, LOWER(name))`. It also indexes account and category owner columns.
+
+Transactions inherit ownership through their account. Service queries require both the resource identifier and authenticated account owner, while category resolution separately requires the same owner. This keeps one user's accounts, categories, ledger rows, dashboard aggregates, and budget calculations isolated from another user's data.
+
+### Balance concurrency control
+
+Balance-changing service transactions use PostgreSQL pessimistic row locks. Account repository methods annotated with `PESSIMISTIC_WRITE` produce `SELECT ... FOR NO KEY UPDATE`, so only one writer at a time can calculate a new balance from a given account row.
+
+Transaction replacement locks the ledger row and all affected account rows. Multiple accounts are requested in ascending ID order to keep lock acquisition consistent. Read-only queries use the ordinary repository methods and do not take these write locks. This is transaction behavior rather than a schema change, so it requires no additional Flyway migration.
+
 ## 4. Redis Key Structure
-* `rate_limit:{user_id}:` Key tracking API request counts per minute.
+* Gateway rate-limit keys use the authenticated user ID, with direct remote IP as the fallback when no identity is available.
 * `budget_summary:{user_id}:{month}:` Cached total monthly spending calculation.

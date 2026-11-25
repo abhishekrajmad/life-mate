@@ -18,8 +18,8 @@ public class AiAgentClient {
 
     public AiAgentClient(@Value("${ai-agent.base-url}") String aiAgentBaseUrl) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);  // 5 seconds
-        factory.setReadTimeout(35000);    // 35 seconds
+        factory.setConnectTimeout(5000); // 5 seconds
+        factory.setReadTimeout(35000); // 35 seconds
 
         this.restClient = RestClient.builder()
                 .baseUrl(aiAgentBaseUrl)
@@ -32,8 +32,7 @@ public class AiAgentClient {
 
         Map<String, String> requestBody = Map.of(
                 "raw_text", rawText,
-                "currency", currency != null ? currency : "INR"
-        );
+                "currency", currency != null ? currency : "INR");
 
         AiParseResponseDTO response = restClient.post()
                 .uri("/api/v1/ai/parse-expense")
@@ -42,7 +41,8 @@ public class AiAgentClient {
                 .retrieve()
                 .body(AiParseResponseDTO.class);
 
-        if (response == null || response.getAmount() == null) {
+        if (response == null || (response.getAmount() == null
+                && !"NON_TRANSACTION".equalsIgnoreCase(response.getTransactionType()))) {
             throw new IllegalStateException("AI Agent returned an empty or invalid response");
         }
 

@@ -11,6 +11,11 @@ public class ClientKeyResolverConfig {
     @Bean
     public KeyResolver clientKeyResolver() {
         return exchange -> {
+            String authenticatedUser = exchange.getRequest().getHeaders()
+                    .getFirst(GatewayHeaders.AUTHENTICATED_USER);
+            if (authenticatedUser != null && !authenticatedUser.isBlank()) {
+                return reactor.core.publisher.Mono.just("user:" + authenticatedUser);
+            }
             InetSocketAddress remoteAddress = exchange.getRequest().getRemoteAddress();
             if (remoteAddress == null || remoteAddress.getAddress() == null) {
                 return reactor.core.publisher.Mono.just("unknown");

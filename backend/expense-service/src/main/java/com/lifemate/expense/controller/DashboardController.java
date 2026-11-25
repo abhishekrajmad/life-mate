@@ -1,6 +1,7 @@
 package com.lifemate.expense.controller;
 
 import com.lifemate.expense.dto.DashboardSummaryDTO;
+import com.lifemate.expense.config.RequestHeaders;
 import com.lifemate.expense.dto.DashboardSummaryDTO.CategoryBudgetStatus;
 import com.lifemate.expense.dto.ExpenseResponseDTO;
 import com.lifemate.expense.entity.Account;
@@ -11,6 +12,7 @@ import com.lifemate.expense.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -29,16 +31,18 @@ public class DashboardController {
     private final TransactionRepository transactionRepository;
 
     @GetMapping("/summary")
-    public DashboardSummaryDTO getDashboardSummary() {
-        BigDecimal totalBalance = accountRepository.findAll().stream()
+    public DashboardSummaryDTO getDashboardSummary(
+            @RequestHeader(RequestHeaders.AUTHENTICATED_USER) String userId) {
+        BigDecimal totalBalance = accountRepository.findAllByUserIdOrderByAccountNameAsc(userId).stream()
                 .map(Account::getBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
-        List<Category> categories = categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAllByUserIdOrderByNameAsc(userId);
 
         List<CategoryBudgetStatus> categoryStatuses = categories.stream().map(cat -> {
-            BigDecimal spent = transactionRepository.sumMonthlyExpensesByCategory(cat.getId(), startOfMonth);
+            BigDecimal spent = transactionRepository.sumMonthlyExpensesByCategory(
+                    cat.getId(), userId, startOfMonth);
             BigDecimal limit = cat.getMonthlyBudgetLimit() != null ? cat.getMonthlyBudgetLimit() : BigDecimal.ZERO;
 
             double pct = 0.0;
@@ -66,7 +70,8 @@ public class DashboardController {
                 .map(CategoryBudgetStatus::getMonthlyLimit)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<ExpenseResponseDTO> recent = transactionRepository.findAllByOrderByCreatedAtDesc()
+        List<ExpenseResponseDTO> recent = transactionRepository
+                .findAllByAccount_UserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .limit(15)
                 .map(tx -> ExpenseResponseDTO.builder()

@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 CategoryType = Literal[
     "Food & Dining",
@@ -11,6 +11,7 @@ CategoryType = Literal[
     "Health & Fitness",
     "Other",
 ]
+TransactionType = Literal["EXPENSE", "INCOME", "NON_TRANSACTION"]
 
 
 class ExpenseParseRequest(BaseModel):
@@ -29,20 +30,26 @@ class ExpenseParseRequest(BaseModel):
 
 
 class ExpenseParseResponse(BaseModel):
-    amount: float = Field(..., description="Extracted numeric transaction amount")
-    currency: str = Field(..., description="3-letter currency code such as INR or USD")
-    category: CategoryType = Field(..., description="Mapped expense category")
-    merchant: str = Field(..., description="Merchant, vendor, or short description")
+    transaction_type: TransactionType = Field(
+        default="EXPENSE",
+        description="Expense for a debit, income for a credit, or non-transaction",
+    )
+    amount: float | None = Field(default=None, description="Extracted numeric transaction amount")
+    currency: str | None = Field(default=None, description="3-letter currency code such as INR or USD")
+    category: CategoryType | None = Field(default=None, description="Mapped transaction category")
+    merchant: str | None = Field(default=None, description="Merchant, vendor, or short description")
     confidence_score: float = Field(
         ..., description="Model confidence score between 0.0 and 1.0"
     )
 
-    @field_validator("amount")
-    @classmethod
-    def validate_positive_amount(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("Amount must be greater than 0")
-        return v
+    @model_validator(mode="after")
+    def validate_transaction_details(self) -> "ExpenseParseResponse":
+        if self.transaction_type != "NON_TRANSACTION":
+            if self.amount is None or self.amount <= 0:
+                raise ValueError("Amount must be greater than 0 for a transaction")
+            if self.category is None:
+                raise ValueError("Category is required for a transaction")
+        return self
 
     @field_validator("confidence_score")
     @classmethod

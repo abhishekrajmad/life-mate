@@ -2,6 +2,14 @@ server:
   port: ${SERVER_PORT:8080}
   address: ${SERVER_ADDRESS:127.0.0.1}
 
+gateway:
+  security:
+    enabled: ${GATEWAY_AUTH_ENABLED:false}
+    api-token: ${GATEWAY_API_TOKEN:}
+    webhook-token: ${GATEWAY_WEBHOOK_TOKEN:}
+    api-user-id: ${GATEWAY_API_USER_ID:usr_abhishek}
+    webhook-user-id: ${GATEWAY_WEBHOOK_USER_ID:usr_abhishek}
+
 spring:
   application:
     name: api-gateway
@@ -30,7 +38,7 @@ spring:
         - id: expense-service
           uri: ${EXPENSE_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/v1/expenses,/api/v1/expenses/**,/api/v1/dashboard/**,/api/v1/categories/**
+            - Path=/api/v1/expenses,/api/v1/expenses/**,/api/v1/accounts,/api/v1/accounts/**,/api/v1/dashboard/**,/api/v1/categories/**
         - id: ai-agent-service
           uri: ${AI_AGENT_URL:http://localhost:8000}
           predicates:

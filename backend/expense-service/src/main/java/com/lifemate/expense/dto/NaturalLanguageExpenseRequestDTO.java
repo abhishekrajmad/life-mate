@@ -1,6 +1,7 @@
 package com.lifemate.expense.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
 import lombok.*;
 
 @Getter
@@ -16,4 +17,7 @@ public class NaturalLanguageExpenseRequestDTO {
     private String rawText;
 
     private String currency; // Defaults to INR if omitted
+
+    @Valid
+    private ManualExpenseFallbackDTO manualFallback;
 }
