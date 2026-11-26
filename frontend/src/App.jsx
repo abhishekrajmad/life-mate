@@ -22,8 +22,15 @@ const DEFAULT_CATEGORIES = [
   'Other',
 ];
 
+const getDashboardSummary = async () => {
+  const res = await fetch(`${API_BASE}/dashboard/summary`);
+  if (!res.ok) throw new Error('Failed to load dashboard summary');
+  return res.json();
+};
+
 export default function App() {
   const [summary, setSummary] = useState(null);
+  const [summaryError, setSummaryError] = useState(null);
   const [rawText, setRawText] = useState('');
   const [manualFallback, setManualFallback] = useState(null);
   const [manualAmount, setManualAmount] = useState('');
@@ -37,23 +44,38 @@ export default function App() {
     ...(summary?.categoryBudgets ?? []).map((category) => category.categoryName),
   ])];
 
-  const fetchSummary = async () => {
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadSummary = async () => {
+      try {
+        const data = await getDashboardSummary();
+        if (isCurrent) setSummary(data);
+      } catch {
+        if (isCurrent) setSummaryError('Could not load the dashboard. Please try again.');
+      } finally {
+        if (isCurrent) setLoading(false);
+      }
+    };
+
+    loadSummary();
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  const refreshSummary = async () => {
+    setLoading(true);
+    setSummaryError(null);
+
     try {
-      const res = await fetch(`${API_BASE}/dashboard/summary`);
-      if (!res.ok) throw new Error('Failed to load dashboard summary');
-      const data = await res.json();
-      setSummary(data);
-      setToast((current) => current?.type === 'error' ? null : current);
-    } catch (err) {
-      setToast({ type: 'error', message: err.message });
+      setSummary(await getDashboardSummary());
+    } catch {
+      setSummaryError('Could not refresh the dashboard. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchSummary();
-  }, []);
 
   const handleQuickAdd = async (e) => {
     e.preventDefault();
@@ -97,7 +119,7 @@ export default function App() {
         type: 'success',
         message: `Logged ₹${created.amount.toLocaleString('en-IN')} at ${created.merchant} (${created.categoryName})`,
       });
-      await fetchSummary();
+      await refreshSummary();
     } catch (err) {
       setToast({ type: 'error', message: err.message });
     } finally {
@@ -111,15 +133,6 @@ export default function App() {
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(val || 0);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
-        <RefreshCw className="w-6 h-6 animate-spin text-emerald-400 mr-3" />
-        <span>Loading Life Mate...</span>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -136,11 +149,12 @@ export default function App() {
             </div>
           </div>
           <button
-            onClick={fetchSummary}
+            onClick={refreshSummary}
+            disabled={loading}
             className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 transition cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? (summary ? 'Refreshing...' : 'Loading...') : 'Refresh'}
           </button>
         </div>
       </header>
@@ -241,9 +255,74 @@ export default function App() {
           )}
         </section>
 
-        {/* Top KPI Summary Cards */}
+        {loading && !summary && (
+          <section
+            aria-label="Loading dashboard"
+            aria-busy="true"
+            className="space-y-6 animate-pulse"
+          >
+            <p className="sr-only">Loading dashboard summary</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[0, 1, 2].map((card) => (
+                <div key={card} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                  <div className="h-3 w-2/5 rounded bg-slate-800" />
+                  <div className="h-8 w-3/5 rounded bg-slate-800" />
+                  <div className="h-3 w-1/2 rounded bg-slate-800" />
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              <div className="lg:col-span-2 h-56 bg-slate-900 border border-slate-800 rounded-2xl" />
+              <div className="lg:col-span-3 h-56 bg-slate-900 border border-slate-800 rounded-2xl" />
+            </div>
+          </section>
+        )}
+
+        {!loading && !summary && (
+          <section
+            role="alert"
+            className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-6 text-rose-200"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+                <div>
+                  <h2 className="font-semibold">Dashboard unavailable</h2>
+                  <p className="text-sm mt-1 text-rose-200/80">
+                    {summaryError || 'The dashboard could not be loaded. Please try again.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={refreshSummary}
+                disabled={loading}
+                className="px-4 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 disabled:opacity-50 text-sm font-medium transition cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          </section>
+        )}
+
         {summary && (
           <>
+            {summaryError && (
+              <section
+                role="alert"
+                className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+              >
+                <p className="text-sm">{summaryError} Showing the last loaded data.</p>
+                <button
+                  onClick={refreshSummary}
+                  disabled={loading}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-50 text-sm font-medium transition cursor-pointer"
+                >
+                  Retry
+                </button>
+              </section>
+            )}
+
+            {/* Top KPI Summary Cards */}
             <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
                 <p className="text-xs uppercase tracking-wider text-slate-400">
@@ -286,7 +365,11 @@ export default function App() {
               <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
                 <h3 className="text-base font-semibold">Monthly Category Budgets</h3>
                 <div className="space-y-4">
-                  {summary.categoryBudgets.map((cat) => {
+                  {summary.categoryBudgets.length === 0 ? (
+                    <p className="text-sm text-slate-400">
+                      No category budgets are available yet.
+                    </p>
+                  ) : summary.categoryBudgets.map((cat) => {
                     const barWidth = Math.min(cat.percentageUsed, 100);
                     const barColor = cat.exceeded
                       ? 'bg-rose-500'
@@ -334,7 +417,11 @@ export default function App() {
                 </div>
 
                 <div className="divide-y divide-slate-800">
-                  {summary.recentTransactions.map((tx) => (
+                  {summary.recentTransactions.length === 0 ? (
+                    <p className="py-4 text-sm text-slate-400">
+                      No transactions yet. Log one above to see it here.
+                    </p>
+                  ) : summary.recentTransactions.map((tx) => (
                     <div
                       key={tx.id}
                       className="py-3.5 flex items-center justify-between gap-4"

@@ -42,7 +42,7 @@
 ## 3. Four Mandatory UI States Per Component
 Following Section 4 (Phase 10) of the ADF framework, every React page component must explicitly handle:
 
-1. **Loading State:** Displays animated skeletal loaders while REST API calls process.
-2. **Error State:** Displays user-friendly alert toasts with retry buttons if microservices fail.
-3. **Empty State:** Shows clean placeholder illustrations when no transactions or budgets exist.
+1. **Loading State:** Displays animated skeleton loaders while REST API calls process.
+2. **Error State:** Displays an inline, user-friendly alert with a retry button if the dashboard request fails. When a refresh fails after data has loaded, retain the last loaded data and show the alert.
+3. **Empty State:** Shows a clear placeholder message when no transactions or budgets exist.
 4. **Data State:** Renders live metrics, transaction rows, and progress gauges.
