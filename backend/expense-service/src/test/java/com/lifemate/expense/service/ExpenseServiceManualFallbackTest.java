@@ -110,6 +110,87 @@ class ExpenseServiceManualFallbackTest {
     }
 
     @Test
+    void rejectsUnsupportedAiCategoryWithoutSaving() {
+        when(aiAgentClient.parseExpense("purchase", "INR"))
+                .thenReturn(AiParseResponseDTO.builder()
+                        .transactionType("EXPENSE")
+                        .amount(new BigDecimal("24.50"))
+                        .currency("INR")
+                        .category("Travel")
+                        .build());
+
+        assertThrows(AiParsingUnavailableException.class,
+                () -> expenseService.createFromNaturalLanguage("user-1",
+                        NaturalLanguageExpenseRequestDTO.builder()
+                                .rawText("purchase")
+                                .build()));
+
+        verify(accountRepository, never()).findByIdAndUserIdForUpdate(any(), any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsUnsupportedAiCurrencyWithoutSaving() {
+        when(aiAgentClient.parseExpense("purchase", "INR"))
+                .thenReturn(AiParseResponseDTO.builder()
+                        .transactionType("EXPENSE")
+                        .amount(new BigDecimal("24.50"))
+                        .currency("USD")
+                        .category("Groceries")
+                        .build());
+
+        assertThrows(AiParsingUnavailableException.class,
+                () -> expenseService.createFromNaturalLanguage("user-1",
+                        NaturalLanguageExpenseRequestDTO.builder()
+                                .rawText("purchase")
+                                .build()));
+
+        verify(accountRepository, never()).findByIdAndUserIdForUpdate(any(), any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsUnsupportedManualFallbackCategoryWithoutSaving() {
+        assertThrows(IllegalArgumentException.class,
+                () -> expenseService.createFromNaturalLanguage("user-1",
+                        NaturalLanguageExpenseRequestDTO.builder()
+                                .rawText("market purchase")
+                                .manualFallback(ManualExpenseFallbackDTO.builder()
+                                        .amount(new BigDecimal("24.50"))
+                                        .categoryName("Travel")
+                                        .merchant("Local Market")
+                                        .build())
+                                .build()));
+
+        verify(aiAgentClient, never()).parseExpense(any(), any());
+        verify(accountRepository, never()).findByIdAndUserIdForUpdate(any(), any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsUsdAccountBeforeSavingTransaction() {
+        Account account = Account.builder().id(1L).userId("user-1")
+                .accountName("US Account").balance(new BigDecimal("100.00"))
+                .currency("USD").build();
+        when(accountRepository.findByIdAndUserIdForUpdate(1L, "user-1"))
+                .thenReturn(Optional.of(account));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> expenseService.createFromNaturalLanguage("user-1",
+                        NaturalLanguageExpenseRequestDTO.builder()
+                                .rawText("market purchase")
+                                .manualFallback(ManualExpenseFallbackDTO.builder()
+                                        .amount(new BigDecimal("24.50"))
+                                        .categoryName("Groceries")
+                                        .merchant("Local Market")
+                                        .build())
+                                .build()));
+
+        verify(transactionRepository, never()).save(any());
+        verify(outboxWriter, never()).save(any());
+    }
+
+    @Test
     void recordsSmsDebitAsExpense() {
         Account account = mockSmsAccount("100.00");
         when(aiAgentClient.parseExpense("Rs 20 debited at Market", "INR"))

@@ -57,3 +57,13 @@ class ExpenseParseResponse(BaseModel):
         if not 0.0 <= v <= 1.0:
             raise ValueError("Confidence score must be between 0.0 and 1.0")
         return v
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        normalized = v.strip().upper()
+        if normalized != "INR":
+            raise ValueError("Ledger supports INR only")
+        return normalized

@@ -36,3 +36,25 @@ class ExpenseParseResponseTest(unittest.TestCase):
 
         self.assertEqual("INCOME", response.transaction_type)
         self.assertEqual(500, response.amount)
+
+    def test_completed_transaction_rejects_non_inr_currency(self):
+        with self.assertRaises(ValidationError):
+            ExpenseParseResponse(
+                transaction_type="EXPENSE",
+                amount=450,
+                currency="USD",
+                category="Food & Dining",
+                merchant="Restaurant",
+                confidence_score=0.95,
+            )
+
+    def test_completed_transaction_rejects_unsupported_category(self):
+        with self.assertRaises(ValidationError):
+            ExpenseParseResponse(
+                transaction_type="EXPENSE",
+                amount=450,
+                currency="INR",
+                category="Travel",
+                merchant="Airline",
+                confidence_score=0.95,
+            )

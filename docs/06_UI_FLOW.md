@@ -39,6 +39,8 @@
 +-----------------------------------------------------------------------+
 ```
 
+Recent ledger rows must show date, merchant, category, amount, and transaction type. `INCOME` rows use a positive amount and distinct income styling; `EXPENSE` rows use a negative amount and distinct expense styling. Missing merchant or category values use explicit fallback text rather than presenting an empty field.
+
 ## 3. Four Mandatory UI States Per Component
 Following Section 4 (Phase 10) of the ADF framework, every React page component must explicitly handle:
 

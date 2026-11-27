@@ -25,6 +25,7 @@ Parses raw text or SMS body into a structured expense JSON DTO.
 }
 ```
 `transaction_type` is `EXPENSE` for a completed debit, `INCOME` for a completed credit, or `NON_TRANSACTION` for a message that does not represent a completed transaction. For `NON_TRANSACTION`, amount, currency, category, and merchant are null. Completed transactions require a positive amount and supported category.
+Completed transactions support only `INR` currency. The AI response and account currency must be INR; USD or another currency is rejected rather than stored or converted. Supported categories are `Food & Dining`, `Groceries`, `Transport`, `Utilities & Bills`, `Shopping`, `Entertainment`, `Health & Fitness`, and `Other`.
 * **Error Response (`400 Bad Request`):**
 ```json
 {

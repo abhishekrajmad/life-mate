@@ -69,23 +69,23 @@ class ExpenseServiceLedgerMutationTest {
         Account previousAccount = account(1L, "900.00");
         Account targetAccount = account(2L, "500.00");
         Category oldCategory = category(1L, "Food & Dining");
-        Category newCategory = category(2L, "Salary");
+        Category newCategory = category(2L, "Other");
         Transaction transaction = transaction(10L, previousAccount, oldCategory, "100.00", "EXPENSE");
         when(transactionRepository.findByIdAndAccountUserIdForUpdate(10L, USER_ID))
                 .thenReturn(Optional.of(transaction));
         when(accountRepository.findAllByUserIdAndIdInForUpdate(USER_ID, List.of(1L, 2L)))
                 .thenReturn(List.of(previousAccount, targetAccount));
-        when(categoryRepository.findByUserIdAndNameIgnoreCase(USER_ID, "Salary"))
+        when(categoryRepository.findByUserIdAndNameIgnoreCase(USER_ID, "Other"))
                 .thenReturn(Optional.of(newCategory));
         when(transactionRepository.save(transaction)).thenReturn(transaction);
 
         ExpenseResponseDTO response = expenseService.updateExpense(USER_ID, 10L,
-                request(2L, "Salary", "50.00", "INCOME"));
+                request(2L, "Other", "50.00", "INCOME"));
 
         assertEquals(new BigDecimal("1000.00"), previousAccount.getBalance());
         assertEquals(new BigDecimal("550.00"), targetAccount.getBalance());
         assertEquals(2L, response.getAccountId());
-        assertEquals("Salary", response.getCategoryName());
+        assertEquals("Other", response.getCategoryName());
         assertEquals("INCOME", response.getTransactionType());
         verify(accountRepository).save(previousAccount);
         verify(accountRepository).save(targetAccount);

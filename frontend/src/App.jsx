@@ -8,6 +8,7 @@ import {
   Receipt,
   CheckCircle2,
   RefreshCw,
+  TrendingUp,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -133,6 +134,18 @@ export default function App() {
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(val || 0);
+
+  const formatTransactionDate = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Date unavailable';
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -421,37 +434,54 @@ export default function App() {
                     <p className="py-4 text-sm text-slate-400">
                       No transactions yet. Log one above to see it here.
                     </p>
-                  ) : summary.recentTransactions.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className="py-3.5 flex items-center justify-between gap-4"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm text-slate-100 truncate">
-                          {tx.merchant}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">
-                            {tx.categoryName}
-                          </span>
-                          <span className="text-xs text-slate-500 truncate">
-                            {new Date(tx.createdAt).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
+                  ) : summary.recentTransactions.map((tx) => {
+                    const transactionType = String(tx.transactionType || 'EXPENSE').toUpperCase();
+                    const isIncome = transactionType === 'INCOME';
+
+                    return (
+                      <div
+                        key={tx.id}
+                        className="py-3.5 flex items-center justify-between gap-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm text-slate-100 truncate">
+                            {tx.merchant || 'Merchant unavailable'}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">
+                              {tx.categoryName || 'Uncategorized'}
+                            </span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${
+                                isIncome
+                                  ? 'bg-emerald-500/15 text-emerald-300'
+                                  : 'bg-rose-500/15 text-rose-300'
+                              }`}
+                            >
+                              {isIncome ? 'INCOME' : 'EXPENSE'}
+                            </span>
+                            <span className="text-xs text-slate-500 truncate">
+                              {formatTransactionDate(tx.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p
+                            className={`text-sm font-semibold flex items-center gap-1 ${
+                              isIncome ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {isIncome ? (
+                              <TrendingUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <TrendingDown className="w-3.5 h-3.5" />
+                            )}
+                            {isIncome ? '+' : '-'}{formatINR(tx.amount)}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-rose-400 flex items-center gap-1">
-                          <TrendingDown className="w-3.5 h-3.5" />
-                          -{formatINR(tx.amount)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </section>

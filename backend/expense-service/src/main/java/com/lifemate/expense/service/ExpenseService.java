@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -34,6 +35,16 @@ public class ExpenseService {
 
     private static final String EXPENSE = "EXPENSE";
     private static final String INCOME = "INCOME";
+    private static final String LEDGER_CURRENCY = "INR";
+    private static final Set<String> SUPPORTED_CATEGORIES = Set.of(
+            "Food & Dining",
+            "Groceries",
+            "Transport",
+            "Utilities & Bills",
+            "Shopping",
+            "Entertainment",
+            "Health & Fitness",
+            "Other");
 
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
@@ -46,7 +57,10 @@ public class ExpenseService {
         log.info("Creating expense for account ID: {} with amount: {}", request.getAccountId(), request.getAmount());
 
         String owner = normalizeUserId(userId);
+        normalizeSupportedCategoryName(request.getCategoryName());
+        validateLedgerAmount(request.getAmount());
         Account account = requireAccountForUpdate(owner, request.getAccountId());
+        validateAccountCurrency(account);
         Category category = resolveCategory(owner, request.getCategoryName());
         String txType = normalizeTransactionType(request.getTransactionType());
 
@@ -126,11 +140,13 @@ public class ExpenseService {
 
     private AiParseResponseDTO parseExpenseOrFallback(
             String rawText, String currency, ManualExpenseFallbackDTO manualFallback) {
+        String normalizedCurrency = normalizeLedgerCurrency(currency);
         if (manualFallback != null) {
             return AiParseResponseDTO.builder()
                     .amount(manualFallback.getAmount())
                     .category(manualFallback.getCategoryName())
                     .merchant(manualFallback.getMerchant())
+                    .currency(normalizedCurrency)
                     .transactionType(manualFallback.getTransactionType() == null
                             ? EXPENSE
                             : normalizeTransactionType(manualFallback.getTransactionType()))
@@ -138,16 +154,20 @@ public class ExpenseService {
         }
 
         try {
-            AiParseResponseDTO parsed = aiAgentClient.parseExpense(rawText, currency);
+            AiParseResponseDTO parsed = aiAgentClient.parseExpense(rawText, normalizedCurrency);
             if (parsed == null) {
                 throw new IllegalStateException("AI response is missing transaction details");
             }
             String transactionType = normalizeParsedTransactionType(parsed.getTransactionType());
             parsed.setTransactionType(transactionType);
+            String parsedCurrency = normalizeLedgerCurrency(
+                    parsed.getCurrency() == null ? normalizedCurrency : parsed.getCurrency());
+            parsed.setCurrency(parsedCurrency);
             if (!"NON_TRANSACTION".equals(transactionType)
                     && (parsed.getAmount() == null || parsed.getAmount().signum() <= 0
                             || parsed.getAmount().scale() > 2 || parsed.getCategory() == null
-                            || parsed.getCategory().isBlank() || parsed.getCategory().length() > 50)) {
+                            || parsed.getCategory().isBlank() || parsed.getCategory().length() > 50
+                            || !isSupportedCategory(parsed.getCategory()))) {
                 throw new IllegalStateException("AI response is missing valid transaction details");
             }
             return parsed;
@@ -183,11 +203,15 @@ public class ExpenseService {
     public ExpenseResponseDTO updateExpense(String userId, Long transactionId, ExpenseRequestDTO request) {
         String owner = normalizeUserId(userId);
         Transaction transaction = requireTransactionForUpdate(owner, transactionId);
+        validateLedgerAmount(request.getAmount());
+        normalizeSupportedCategoryName(request.getCategoryName());
         Long previousAccountId = transaction.getAccount().getId();
         Map<Long, Account> lockedAccounts = requireAccountsForUpdate(
                 owner, previousAccountId, request.getAccountId());
         Account previousAccount = lockedAccounts.get(previousAccountId);
         Account targetAccount = lockedAccounts.get(request.getAccountId());
+        validateAccountCurrency(previousAccount);
+        validateAccountCurrency(targetAccount);
         Category targetCategory = resolveCategory(owner, request.getCategoryName());
         String targetType = normalizeTransactionType(request.getTransactionType());
 
@@ -258,7 +282,7 @@ public class ExpenseService {
     }
 
     private Category resolveCategory(String userId, String categoryName) {
-        String normalizedName = categoryName.trim();
+        String normalizedName = normalizeSupportedCategoryName(categoryName);
         String owner = normalizeUserId(userId);
         return categoryRepository.findByUserIdAndNameIgnoreCase(owner, normalizedName)
                 .orElseGet(() -> categoryRepository.save(Category.builder()
@@ -266,6 +290,57 @@ public class ExpenseService {
                         .name(normalizedName)
                         .monthlyBudgetLimit(new BigDecimal("5000.00"))
                         .build()));
+    }
+
+    private String normalizeSupportedCategoryName(String categoryName) {
+        if (categoryName == null || categoryName.isBlank()) {
+            throw new IllegalArgumentException("Category name is required");
+        }
+        String trimmedName = categoryName.trim();
+        for (String supportedCategory : SUPPORTED_CATEGORIES) {
+            if (supportedCategory.equalsIgnoreCase(trimmedName)) {
+                return supportedCategory;
+            }
+        }
+        throw new IllegalArgumentException("Unsupported category name: " + trimmedName);
+    }
+
+    private boolean isSupportedCategory(String categoryName) {
+        if (categoryName == null || categoryName.isBlank()) {
+            return false;
+        }
+        return SUPPORTED_CATEGORIES.stream()
+                .anyMatch(supported -> supported.equalsIgnoreCase(categoryName.trim()));
+    }
+
+    private String normalizeLedgerCurrency(String currency) {
+        String normalized = currency == null || currency.isBlank()
+                ? LEDGER_CURRENCY
+                : currency.trim().toUpperCase(Locale.ROOT);
+        if (!LEDGER_CURRENCY.equals(normalized)) {
+            throw new IllegalArgumentException(
+                    "Unsupported transaction currency: " + normalized + ". Ledger supports INR only");
+        }
+        return normalized;
+    }
+
+    private void validateAccountCurrency(Account account) {
+        String currency = account.getCurrency() == null || account.getCurrency().isBlank()
+                ? LEDGER_CURRENCY
+                : account.getCurrency().trim().toUpperCase(Locale.ROOT);
+        if (!LEDGER_CURRENCY.equals(currency)) {
+            throw new IllegalArgumentException(
+                    "Account currency must be INR; ledger supports INR only");
+        }
+    }
+
+    private void validateLedgerAmount(BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0
+                || amount.scale() > 2
+                || amount.precision() - Math.max(amount.scale(), 0) > 10) {
+            throw new IllegalArgumentException(
+                    "Amount must be positive with at most 10 integer and 2 decimal digits");
+        }
     }
 
     private String normalizeTransactionType(String transactionType) {
