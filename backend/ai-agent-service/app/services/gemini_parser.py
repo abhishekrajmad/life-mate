@@ -36,7 +36,7 @@ class GeminiParserService:
             f"Transaction Text: {request.raw_text}"
         )
 
-        logger.info("Sending transaction text to Gemini model: %s", settings.gemini_model)
+        logger.info("Sending transaction parse request to Gemini model: %s", settings.gemini_model)
 
         response = self.client.models.generate_content(
             model=settings.gemini_model,

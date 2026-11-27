@@ -104,18 +104,18 @@ Account responses use this shape:
 
 ### Expense ingestion and dashboard
 
-### `POST /api/v1/expenses/parse-and-save`
+### `POST /api/v1/expenses/parse`
 Takes raw user text, calls AI Agent Service internally, and saves transaction.
 
 * **Request Body:**
 ```json
 {
   "accountId": 1,
-  "rawInput": "Spent 450 rupees on lunch at Paradise Biryani"
+  "rawText": "Spent 450 rupees on lunch at Paradise Biryani"
 }
 ```
 
-The current natural-language route is `POST /api/v1/expenses/parse`. If AI parsing is unavailable or returns unusable amount/category data, it returns `503 Service Unavailable` with `details.manualFallbackRequired` set to `"true"`; no transaction is saved. The caller can retry with explicit values:
+If AI parsing is unavailable or returns unusable amount/category data, the endpoint returns `503 Service Unavailable` with `details.manualFallbackRequired` set to `"true"`; no transaction is saved. The caller can retry with explicit values:
 
 ```json
 {
@@ -196,7 +196,7 @@ Any operation that can change an account balance obtains a PostgreSQL write lock
 
 Read-only account, expense, and dashboard requests do not request these write locks.
 
-### `GET /api/v1/expenses/dashboard-summary`
+### `GET /api/v1/dashboard/summary`
 Fetches account balance, spending ledgers, and budget progress.
 
 * **Success Response (`200 OK`):**

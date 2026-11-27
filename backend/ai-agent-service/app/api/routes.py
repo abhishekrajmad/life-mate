@@ -18,7 +18,7 @@ def parse_expense(payload: ExpenseParseRequest) -> ExpenseParseResponse:
     try:
         return parser_service.parse_expense(payload)
     except Exception as exc:
-        logger.exception("Failed to parse expense via Gemini API")
+        logger.error("Failed to parse transaction via Gemini (%s)", type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"AI parsing failed: {str(exc)}",

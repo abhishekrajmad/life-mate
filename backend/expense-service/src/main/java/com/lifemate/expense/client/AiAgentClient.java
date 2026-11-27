@@ -28,7 +28,7 @@ public class AiAgentClient {
     }
 
     public AiParseResponseDTO parseExpense(String rawText, String currency) {
-        log.info("Calling ai-agent-service to parse text: {}", rawText);
+        log.info("Calling ai-agent-service to parse transaction");
 
         Map<String, String> requestBody = Map.of(
                 "raw_text", rawText,
@@ -46,8 +46,7 @@ public class AiAgentClient {
             throw new IllegalStateException("AI Agent returned an empty or invalid response");
         }
 
-        log.info("AI parsed expense -> Amount: {}, Category: {}, Merchant: {}",
-                response.getAmount(), response.getCategory(), response.getMerchant());
+        log.info("AI transaction parsing completed");
         return response;
     }
 }

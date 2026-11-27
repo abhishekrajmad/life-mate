@@ -55,19 +55,22 @@ CREATE TABLE transactions (
 CREATE INDEX idx_transactions_account ON transactions(account_id);
 CREATE INDEX idx_transactions_category ON transactions(category_id);
 CREATE INDEX idx_transactions_created ON transactions(created_at);
-
--- Initial Seed Data
-INSERT INTO categories (name, monthly_budget_limit) VALUES 
-('Food & Dining', 10000.00),
-('Transportation', 3000.00),
-('Shopping', 5000.00),
-('Bills & Utilities', 8000.00),
-('Health & Fitness', 4000.00),
-('General', 2000.00);
-
-INSERT INTO accounts (user_id, account_name, balance, currency) VALUES
-('usr_abhishek', 'Primary Salary Account', 50000.00, 'INR');
 ```
+
+### Default category seed data
+
+The category seed rows are inserted by `src/main/resources/db/migration/V2__seed_default_data.sql`, not by the V1 schema migration. Their names match the AI service's `CategoryType` in `backend/ai-agent-service/app/models/expense_schema.py`.
+
+| Category | Seeded monthly budget |
+| --- | ---: |
+| Food & Dining | 8000.00 |
+| Groceries | 6000.00 |
+| Transport | 4000.00 |
+| Utilities & Bills | 5000.00 |
+| Shopping | 7000.00 |
+| Entertainment | 3000.00 |
+| Health & Fitness | 4000.00 |
+| Other | 3000.00 |
 
 ### Ownership migration
 

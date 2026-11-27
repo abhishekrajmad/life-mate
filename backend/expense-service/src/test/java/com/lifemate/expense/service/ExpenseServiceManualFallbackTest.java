@@ -14,6 +14,8 @@ import com.lifemate.expense.messaging.ExpenseOutboxWriter;
 import com.lifemate.expense.repository.AccountRepository;
 import com.lifemate.expense.repository.CategoryRepository;
 import com.lifemate.expense.repository.TransactionRepository;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,13 +28,15 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class ExpenseServiceManualFallbackTest {
     @Mock
     TransactionRepository transactionRepository;
@@ -188,6 +192,34 @@ class ExpenseServiceManualFallbackTest {
 
         verify(transactionRepository, never()).save(any());
         verify(outboxWriter, never()).save(any());
+    }
+
+    @Test
+    void smsProcessingLogsDoNotContainSensitiveTransactionDetails(CapturedOutput output) {
+        mockSmsAccount("1000.00");
+        String sender = "PRIVATE_BANK_SENDER";
+        String messageBody = "PRIVATE_SMS_BODY_938475";
+        String merchant = "PRIVATE_MERCHANT";
+        String amount = "123.45";
+        when(aiAgentClient.parseExpense(messageBody, "INR"))
+                .thenReturn(AiParseResponseDTO.builder()
+                        .transactionType("EXPENSE")
+                        .amount(new BigDecimal(amount))
+                        .currency("INR")
+                        .category("Other")
+                        .merchant(merchant)
+                        .build());
+
+        expenseService.processSmsWebhook("user-1", SmsWebhookRequestDTO.builder()
+                .sender(sender)
+                .body(messageBody)
+                .build());
+
+        assertTrue(output.getOut().contains("Received SMS webhook"));
+        assertFalse(output.getOut().contains(sender));
+        assertFalse(output.getOut().contains(messageBody));
+        assertFalse(output.getOut().contains(merchant));
+        assertFalse(output.getOut().contains(amount));
     }
 
     @Test

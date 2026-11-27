@@ -54,7 +54,7 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponseDTO createExpense(String userId, ExpenseRequestDTO request) {
-        log.info("Creating expense for account ID: {} with amount: {}", request.getAccountId(), request.getAmount());
+        log.info("Creating ledger transaction");
 
         String owner = normalizeUserId(userId);
         normalizeSupportedCategoryName(request.getCategoryName());
@@ -89,7 +89,7 @@ public class ExpenseService {
                 .transactionType(savedTransaction.getTransactionType())
                 .timestamp(savedTransaction.getCreatedAt())
                 .build());
-        log.info("Successfully saved transaction with ID: {}", savedTransaction.getId());
+        log.info("Successfully saved ledger transaction");
 
         return mapToResponseDTO(savedTransaction);
     }
@@ -117,7 +117,7 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponseDTO processSmsWebhook(String userId, SmsWebhookRequestDTO smsRequest) {
-        log.info("Received SMS webhook from sender: {}", smsRequest.getSender());
+        log.info("Received SMS webhook");
         Long targetAccountId = smsRequest.getAccountId() != null ? smsRequest.getAccountId() : 1L;
 
         AiParseResponseDTO parsed = parseExpenseOrFallback(
